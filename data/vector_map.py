@@ -45,34 +45,59 @@ class VectorizedLocalMap(object):
         self.fixed_num = fixed_num
 
     def gen_vectorized_samples(self, location, ego2global_translation, ego2global_rotation):
+        """
+        生成指定区域内的地图元素向量表示。
+
+        该函数将车辆周围区域的地图元素（如车道线、人行横道、建筑物轮廓）转换为向量表示形式，这些向量用于后续处理和分析，
+        例如在自动驾驶算法中。
+
+        参数:
+        - location: 感兴趣区域的位置，用于获取该区域的地图信息。
+        - ego2global_translation: 车辆在全局坐标系中的位置平移部分，用于确定感兴趣区域的位置。
+        - ego2global_rotation: 车辆在全局坐标系中的旋转部分，用于调整地图元素的方向以匹配车辆的方向。
+
+        返回:
+        - filtered_vectors: 包含所有地图元素向量表示的列表，每个元素包括点集、点的数量和元素类型。
+        """
+        # 提取车辆在全局坐标系中的2D位置
         map_pose = ego2global_translation[:2]
+        # 将车辆方向的四元数表示转换为Quaternion对象，以便进行后续操作
         rotation = Quaternion(ego2global_rotation)
 
+        # 定义以车辆位置为中心的兴趣区域（patch），大小由self.patch_size指定
         patch_box = (map_pose[0], map_pose[1], self.patch_size[0], self.patch_size[1])
+        # 计算车辆方向的偏航角，用于调整地图元素的方向
         patch_angle = quaternion_yaw(rotation) / np.pi * 180
 
-        line_geom = self.get_map_geom(patch_box, patch_angle, self.line_classes, location)
+        # 获取并矢量化指定区域内的线型地图元素（如车道线）
+        line_geom = self.get_map_geom(patch_box, patch_angle, self.line_classes, location) #? 怎么获得的？
         line_vector_dict = self.line_geoms_to_vectors(line_geom)
 
-        ped_geom = self.get_map_geom(patch_box, patch_angle, self.ped_crossing_classes, location)
-        # ped_vector_list = self.ped_geoms_to_vectors(ped_geom)
+        # 获取并矢量化指定区域内的行人过街地图元素
+        ped_geom = self.get_map_geom(patch_box, patch_angle, self.ped_crossing_classes, location) #? 怎么获得的？
+        # 使用line_geoms_to_vectors方法矢化行人过街，仅选择与行人过街相关的部分
         ped_vector_list = self.line_geoms_to_vectors(ped_geom)['ped_crossing']
 
-        polygon_geom = self.get_map_geom(patch_box, patch_angle, self.polygon_classes, location)
+        # 获取并矢量化指定区域内的多边形地图元素（如建筑物）
+        polygon_geom = self.get_map_geom(patch_box, patch_angle, self.polygon_classes, location) #? 怎么获得的？
         poly_bound_list = self.poly_geoms_to_vectors(polygon_geom)
 
+        # 初始化一个列表，用于存储所有矢化的地图元素
         vectors = []
+        # 将线型地图元素添加到列表中，并分配相应的类型标签  #? 保存提取的地图结果
         for line_type, vects in line_vector_dict.items():
             for line, length in vects:
                 vectors.append((line.astype(float), length, CLASS2LABEL.get(line_type, -1)))
 
+        # 将行人过街地图元素添加到列表中，并分配相应的类型标签
         for ped_line, length in ped_vector_list:
             vectors.append((ped_line.astype(float), length, CLASS2LABEL.get('ped_crossing', -1)))
 
+        # 将多边形地图元素添加到列表中，并分配相应的类型标签
         for contour, length in poly_bound_list:
             vectors.append((contour.astype(float), length, CLASS2LABEL.get('contours', -1)))
 
-        # filter out -1
+        # 过滤掉没有对应类型标签的地图元素
         filtered_vectors = []
         for pts, pts_num, type in vectors:
             if type != -1:
@@ -82,6 +107,7 @@ class VectorizedLocalMap(object):
                     'type': type
                 })
 
+        # 返回过滤后的矢化地图元素列表
         return filtered_vectors
 
     def get_map_geom(self, patch_box, patch_angle, layer_names, location):

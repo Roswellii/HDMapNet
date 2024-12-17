@@ -21,6 +21,7 @@ def vis_label(dataroot, version, xbound, ybound):
     color_map[0] = np.array([0, 0, 0])
     colors_plt = ['r', 'b', 'g']
 
+    # 初始化自定义数据集实例
     dataset = HDMapNetDataset(version=version, dataroot=dataroot, data_conf=data_conf, is_train=False)
     gt_path = os.path.join(dataroot, 'samples', 'GT')
     if not os.path.exists(gt_path):
@@ -30,6 +31,7 @@ def vis_label(dataroot, version, xbound, ybound):
     for idx in tqdm.tqdm(range(dataset.__len__())):
         rec = dataset.nusc.sample[idx]
         imgs, trans, rots, intrins, post_trans, post_rots = dataset.get_imgs(rec)
+        # 直接从数据集中读取
         vectors = dataset.get_vectors(rec)
 
         lidar_top_path = dataset.nusc.get_sample_data_path(rec['data']['LIDAR_TOP'])
@@ -44,6 +46,7 @@ def vis_label(dataroot, version, xbound, ybound):
         plt.xlim(-30, 30)
         plt.ylim(-15, 15)
         plt.axis('off')
+        # 读取向量，向量已经有类别了
         for vector in vectors:
             pts, pts_num, line_type = vector['pts'], vector['pts_num'], vector['type']
             pts = pts[:pts_num]

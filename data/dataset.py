@@ -142,7 +142,7 @@ class HDMapNetDataset(Dataset):
     def get_vectors(self, rec):
         location = self.nusc.get('log', self.nusc.get('scene', rec['scene_token'])['log_token'])['location']
         ego_pose = self.nusc.get('ego_pose', self.nusc.get('sample_data', rec['data']['LIDAR_TOP'])['ego_pose_token'])
-        vectors = self.vector_map.gen_vectorized_samples(location, ego_pose['translation'], ego_pose['rotation'])
+        vectors = self.vector_map.gen_vectorized_samples(location, ego_pose['translation'], ego_pose['rotation']) #? 这里已经是矢量化的了
         return vectors
 
     def __getitem__(self, idx):
